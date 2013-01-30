@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # coding: utf8
+# Python script to extract and store data from data.mos.ru
 
 from BeautifulSoup import BeautifulSoup
 import sys, os, urllib2

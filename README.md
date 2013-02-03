@@ -12,3 +12,8 @@ Parser and data from data.mos.ru. / Парсер и данные для порт
 Вопросы направляйте по адресу ibegtin (собака) infoculture.ru
 
 Сделана для хаба открытых данных - http://hub.opengovdata.ru
+
+
+Дополнение
+---
+В папке budget данные с сайта budget.mos.ru , скрипт их преобразования в CSV и данные в CSV формате.

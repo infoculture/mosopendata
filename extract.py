@@ -12,7 +12,7 @@ JSON_URL = 'http://data.mos.ru/datasets/aaData?id=%s'
 
 def extract_dataset(url, datasetid):
     id = url.rsplit('/', 2)[-2]
-    if os.path.exists('data/%s.csv' % id ): return None
+    if os.path.exists('thedata/%s.csv' % id ): return None
     print BASE_URL + url
     try:
         u = urllib2.urlopen(BASE_URL + url)
@@ -34,7 +34,7 @@ def extract_dataset(url, datasetid):
         js = json.loads(data)
     except ValueError:
         return None
-    f = open('data/%s.csv' %(id), 'w')
+    f = open('thedata/%s.csv' %(id), 'w')
     s = u'\t'.join(keys).encode('utf8')
     f.write(s + '\n')
     rows = js['aaData']

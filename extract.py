@@ -3,7 +3,7 @@
 # Python script to extract and store data from data.mos.ru
 
 from BeautifulSoup import BeautifulSoup
-import sys, os, urllib2
+import  os, urllib2
 import json
 
 REGISTRY_URL = 'http://data.mos.ru/datasets/param/'
@@ -34,7 +34,7 @@ def extract_dataset(url, datasetid):
         js = json.loads(data)
     except ValueError:
         return None
-    f = open('thedata/%s.csv' %(id), 'w')
+    f = open('thedata/%s.csv' % id, 'w')
     s = u'\t'.join(keys).encode('utf8')
     f.write(s + '\n')
     rows = js['aaData']
@@ -56,7 +56,6 @@ def process():
     u.close()
     soup = BeautifulSoup(data)
     tab = soup.find('table', attrs={'class' : 'tablereestr'})
-    rows = tab.findAll('tr')
     keys = ['name', 'url', 'id', 'description', 'source', 'theme', 'pubdate', 'format']
     print '\t'.join(keys).encode('utf8')
     rows = tab.findAll('tr')    

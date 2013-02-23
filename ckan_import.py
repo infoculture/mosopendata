@@ -3,8 +3,7 @@
 """
 Importer data from Data.mos.ru to hub.opengovdata.ru
 """
-import ckanclient, urllib
-import simplejson as json
+import ckanclient
 import csv
 
 API_KEY_FILENAME = "apikey.txt"
@@ -41,10 +40,11 @@ class DataImporter:
         except ckanclient.CkanApiNotFoundError, e:
             status = 404
         tags = [u'Москва', package['theme'].lower(), u'datamosru']
-        resources = []
+        resources = [{'name': package['name'], 'format': 'HTML', 'url': BASE_URL + package['url'],
+                      'description': u'Страница на сайте data.mos.ru'},
+                     {'name': package['name'], 'format': 'CSV', 'url': DIRECT_DOWNLOAD_URLPAT % package['id'],
+                      'description': u'Данные в формате CSV на data.mos.ru'}]
         # Add direct url to the CSV file and url to HTML
-        resources.append({'name' : package['name'], 'format' : 'HTML', 'url' : BASE_URL + package['url'], 'description' : u'Страница на сайте data.mos.ru'})
-        resources.append({'name' : package['name'], 'format' : 'CSV', 'url' : DIRECT_DOWNLOAD_URLPAT % package['id'], 'description' : u'Данные в формате CSV на data.mos.ru'})
 
         the_package = { 'name' : key, 'title' : package['name'], 'url' : BASE_URL + package['url'],
                            'notes' : package['description'],
@@ -85,7 +85,6 @@ class DataImporter:
 
     def update_group(self, group_name, package_names, group_title="", description=""):
             #        print key
-            group_name = 'moscow'
             try:
                 group = self.ckan.group_entity_get(group_name)
                 status = 0

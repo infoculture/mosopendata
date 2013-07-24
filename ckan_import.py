@@ -48,7 +48,7 @@ class DataImporter:
                       'description': u'Данные в формате CSV на data.mos.ru'}]
         # Add direct url to the CSV file and url to HTML
 
-        the_package = { 'name' : key, 'title' : package['name'], 'url' : BASE_URL + package['url'],
+        the_package = { 'name' : key, 'title' : package['name'], 'url' :  package['url'],
                            'notes' : u'Данные города Москвы.\n\n'.encode('utf8') + package['name'],
                            'tags' : tags,
                            'state' : 'active',

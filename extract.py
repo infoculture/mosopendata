@@ -6,42 +6,21 @@ from BeautifulSoup import BeautifulSoup
 import  os, urllib2
 import json
 
-REGISTRY_URL = 'http://data.mos.ru/datasets/param/'
+REGISTRY_URL = 'http://data.mos.ru/datasets'
 BASE_URL = 'http://data.mos.ru'
-JSON_URL = 'http://data.mos.ru/datasets/aaData?id=%s'
 
-def extract_dataset(url, datasetid):
-    id = url.rsplit('/', 2)[-2]
-    if os.path.exists('thedata/%s.csv' % id ): return None
-    print BASE_URL + url
+def extract_dataset(url, id):
+    filename = 'thedata/%s.csv' % id
+    if os.path.exists(filename): return None
     try:
-        u = urllib2.urlopen(BASE_URL + url)
+        u = urllib2.urlopen(url)
     except urllib2.HTTPError:
         return None
     data = u.read()
     u.close()
-    soup = BeautifulSoup(data)
-    keys = []
-    tab = soup.find('tfoot', attrs={'class': 'dataTable_filters'})
-    headers = tab.findAll('th')
-    for h in headers:
-        keys.append(h['name'])
-    print JSON_URL % datasetid
-    u = urllib2.urlopen(JSON_URL % datasetid)
-    data = u.read()
-    u.close()
-    try:
-        js = json.loads(data)
-    except ValueError:
-        return None
     f = open('thedata/%s.csv' % id, 'w')
-    s = u'\t'.join(keys).encode('utf8')
-    f.write(s + '\n')
-    rows = js['aaData']
-    for row in rows:
-        s = u'\t'.join(row).encode('utf8')
-        f.write(s + '\n')
-    return keys
+    f.write(data)
+    f.close()
 
 def open_url(url):
     opener = urllib2.build_opener()
@@ -55,27 +34,35 @@ def process():
     data = u.read()
     u.close()
     soup = BeautifulSoup(data)
-    tab = soup.find('table', attrs={'class' : 'tablereestr'})
-    keys = ['name', 'url', 'id', 'description', 'source', 'theme', 'pubdate', 'format']
-    print '\t'.join(keys).encode('utf8')
-    rows = tab.findAll('tr')    
+    tab = soup.find('table', attrs={'id' : 'data_table'})
+    keys = ['name', 'url', 'id',  'source', 'theme']
+    print
+    tbody = tab.find('tbody')
+    rows = tbody.findAll('tr')
+    s = '\t'.join(keys).encode('utf8') + '\n'
+    print s.strip()
+    f = open('datasets.csv', 'w')
+    f.write(s)
     for row in rows:
         item = []
         tds = row.findAll('td')
         if len(tds) == 0: continue
-        if len(tds) != 3: continue
-        href = tds[0].find('a')
-        item.append(href.string)
-        item.append(href['href'])
-        item.append(href['href'].split('_', 1)[0].rsplit('/', 1)[-1])
-        item.append(tds[0].find('p', attrs={'class' : 'description'}).string)
-        item.append(tds[0].find('p', attrs={'class' : 'source'}).string)
-        item.append(tds[0].find('input')['name'])
-        item.append(tds[1].next.next.next)
-        item.append(tds[2].string)
-        s = u'\t'.join(item)
-        print s.encode('utf8')
-        extract_dataset(item[1], item[2])
+        if len(tds) < 4: continue
+        celldiv = tds[1].find('div')
+        id = row['id_dataset']
+        href = 'http://data.mos.ru/datasets/%s' %(id)
+        down_href = 'http://data.mos.ru/datasets/download/%s' %(id)
+        item.append(celldiv.next.strip())
+        item.append(href)
+        item.append(id)
+        item.append(tds[3].string.strip())
+        item.append(tds[2].string.strip())
+#        print item
+        s = (u'\t'.join(item) + '\n').encode('utf8')
+        print s.strip()
+        f.write(s)
+
+        extract_dataset(down_href, id)
     pass
     
     

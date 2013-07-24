@@ -10,7 +10,7 @@ API_KEY_FILENAME = "apikey.txt"
 API_URL = "http://hub.opengovdata.ru/api"
 DATASETS_FILENAME = 'datasets.csv'
 BASE_URL = 'http://data.mos.ru'
-DIRECT_DOWNLOAD_URLPAT = "http://data.mos.ru/ru/datasets/download/%s/"
+DIRECT_DOWNLOAD_URLPAT = "http://data.mos.ru/datasets/download/%s"
 
 
 class DataImporter:
@@ -26,42 +26,50 @@ class DataImporter:
         reader = csv.DictReader(open(DATASETS_FILENAME, 'r'), delimiter="\t")
         package_names = []
         for package in reader:
-            package['id'] = package['url'].split('/')[--2]
+            package['id'] = package['id']
             package_names.append(self.register(package))
         self.update_group('moscow', package_names)
         pass
 
     def register(self, package):
-        """Register or update dataset"""
-        key = 'datamosru' + package['id'].replace('.', '_')
+        """Register or update dataset
+        :param package:
+        """
+        key = 'datamosru_' + package['id'].replace('.', '_')
         try:
             r = self.ckan.package_entity_get(key)
             status = 0
         except ckanclient.CkanApiNotFoundError, e:
             status = 404
-        tags = [u'Москва', package['theme'].lower(), u'datamosru']
-        resources = [{'name': package['name'], 'format': 'HTML', 'url': BASE_URL + package['url'],
+        tags = [u'Москва', u'официально', package['theme'].lower(), u'datamosru']
+        resources = [{'name': package['name'], 'format': '', 'url':  package['url'],
                       'description': u'Страница на сайте data.mos.ru'},
                      {'name': package['name'], 'format': 'CSV', 'url': DIRECT_DOWNLOAD_URLPAT % package['id'],
                       'description': u'Данные в формате CSV на data.mos.ru'}]
         # Add direct url to the CSV file and url to HTML
 
         the_package = { 'name' : key, 'title' : package['name'], 'url' : BASE_URL + package['url'],
-                           'notes' : package['description'],
+                           'notes' : u'Данные города Москвы.\n\n'.encode('utf8') + package['name'],
                            'tags' : tags,
                            'state' : 'active',
-                           'resources' : resources,
+                           'resources': resources,
                            'group' : 'moscow',
                            'author' : 'Ivan Begtin',
                            'author_email' : 'ibegtin@infoculture.ru',
                            'maintainer' : 'Ivan Begtin',
                            'maintainer_email' : 'ibegtin@infoculture.ru',
-                           }
+                           'extras':
+                               {'govbody' : package['source']}
+                        }
+        if status != 404:
+            self.ckan.package_entity_delete(r['name'])
 
-
-        if status == 404:
+        if True:
             try:
                 self.ckan.package_register_post(the_package)
+                rname = 'thedata/%s.csv' %(package['id'])
+                self.ckan.upload_file(rname)
+                self.ckan.add_package_resource(the_package['name'], rname, resource_type="data", name=package['name'], description=u"Данные в формате CSV")
             except Exception, e:
                 print key
                 print package['url']
@@ -70,14 +78,10 @@ class DataImporter:
             print "Imported", key
         else:
             package_entity = self.ckan.last_message
-#            print self.ckan.last_message
             if type(package_entity) == type(''): return None
-#            print '20: Entity', package_entity
             package_entity.update(the_package)
             for k in ['id', 'ratings_average', 'relationships', 'ckan_url', 'ratings_count']:
                 del package_entity[k]
-#            print '--'
- #           print package_entity
             self.ckan.package_entity_put(package_entity)
             print "Updated", key
 #            print self.ckan.last_message

@@ -2,6 +2,11 @@
 
 # C extensions
 *.so
+*.json
+*.html
+*.zip
+*.csv
+*.xls
 
 # Packages
 *.egg

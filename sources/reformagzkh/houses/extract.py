@@ -5,13 +5,14 @@
 from BeautifulSoup import BeautifulSoup
 import  os, urllib2
 import json
+import re
 
 BASE_URL = 'http://www.reformagkh.ru'
 AREAS_URL = 'http://www.reformagkh.ru/myhouse?tid=2280999&sort=alphabet&item=mkd&ajax'
 AREAS_FILE = 'data/raw/regions.json'
 MUN_URLPAT = 'http://www.reformagkh.ru/myhouse?tid=2280999&sort=alphabet&item=mkd&ajax&tid=%s'
 MUN_FILEPAT = 'data/raw/tid_%s.json'
-BUILDING_LIST_PAT = 'http://www.reformagkh.ru/myhouse/list?tid=%s&sort=alphabet&item=tp&mkdsort=name&mkdorder=asc&page=no'
+BUILDING_LIST_PAT = 'http://www.reformagkh.ru/myhouse/list?tid=%s&sort=alphabet&item=tp&mkdsort=name&mkdorder=asc&perpage=10000'
 BUILDING_URLPAT = 'http://www.reformagkh.ru/myhouse/view/%s/?group=0'
 BUILDING_KEYS = ['house_id', 'url', 'address','year', 'area', 'num_people', 'status']
 
@@ -22,16 +23,18 @@ def table2dict(tab, skip=0, keys=[], keyshift=2):
         i += 1
         if i - skip <= 0: continue
         row = {}
-        row['house_id'] = k['class']
-        row['url'] = BUILDING_URLPAT % row['house_id']
+        #print k
         tds = k.findAll('td')
+        url=tds[0].find('a')['href']
+        row['url']=BASE_URL+url
+        row['house_id']=re.search('/\d+/',url).group(0).replace('/','')
         tdslen = len(tds)
         for n in range(0, len(keys), 1):
             try:
                 row[keys[n+keyshift]] = tds[n].text
             except:
                 pass
-        print row
+        #print row
         rows.append(row)
     return rows
 
@@ -39,16 +42,26 @@ def extract_areas():
     """Extracts indicators data by area code. Saves as JSON file"""
     filename = AREAS_FILE
     if os.path.exists(filename): return None
+    print "Processing Areas", AREAS_URL
     try:
         u = urllib2.urlopen(AREAS_URL)
     except urllib2.HTTPError:
         return None
     data = u.read()
-    js = json.loads(data)
     u.close()
+    soup = BeautifulSoup(data)
+
+    content = soup.find('div', attrs={'class' : 'tables'}, recursive=True).findAll('a')
+    areas=[]
+    for a in content:
+        tid=a['href'].split('=')[1]
+        name=str(a.contents[0])
+        areas.append({'name':name,'tid':tid})
+        print tid,name        
     f = open(filename, 'w')
-    f.write(json.dumps(js, indent=4))
+    f.write(json.dumps(areas, indent=4))
     f.close()
+    print "Processing Areas", 'written'
 
 def extract_municipal():
     """Extracts data about municipal areas"""
@@ -64,8 +77,27 @@ def extract_municipal():
         print MUN_URLPAT % record['tid']
         u = urllib2.urlopen(MUN_URLPAT % record['tid'])
         data = u.read()
+        u.close()
+        soup = BeautifulSoup(data)
+        div_muni=soup.find('div', attrs={'class' : 'tables'}, recursive=True)
+        div_buildings=soup.find('div', attrs={'id' : 'printAnketa'}, recursive=True)
+        mun_areas=[]
+        if div_muni:
+            content = div_muni.findAll('a')
+            for a in content:
+                tid=a['href'].split('=')[1]
+                name=str(a.contents[0])
+                mun_areas.append({'name':name,'tid':tid})
+                print tid,name        
+        else:
+            if div_buildings:
+                mun_areas.append({'name':record['name'],'tid':record['tid']})
+                print record['tid'],record['name']
+            else:
+                print "Something wrong :-("
+                break
         f = open(MUN_FILEPAT % record['tid'], 'w')
-        f.write(data)
+        f.write(json.dumps(mun_areas, indent=4))
         f.close()
         print "Processing. TID %s" % record['tid'], 'written'
 
@@ -106,8 +138,8 @@ def save_buildings(tid):
         return
     print "Processing buildings for mun %s" % tid
     url = BUILDING_LIST_PAT % tid
-    print '- processed', url
     rows, lastp =  get_buildings_list(url, getlast=False)
+    print '- processed', url
     f = open(filename, 'w')
     json.dump(rows, f, indent=4)
     f.close()
@@ -169,6 +201,8 @@ def refine_buildings():
                 item['address'] = row['address']
                 item['house_year'] = row['year']
                 item['house_id'] = row['house_id']
+                item['house_area'] = row['area']
+                item['num_people'] = row['num_people']
                 allrows.append(item)
         rows = get_buildings_data(area['tid'])
         if len(rows) > 0:
@@ -182,6 +216,8 @@ def refine_buildings():
             item['address'] = row['address']
             item['house_year'] = row['year']
             item['house_id'] = row['house_id']
+            item['house_area'] = row['area']
+            item['num_people'] = row['num_people']
             allrows.append(item)
     f = open('data/refine/buildings.json', 'w')
     json.dump(allrows, f, indent=4)
